@@ -1,0 +1,106 @@
+version: 2
+
+settings:
+  libsodium: &LIBSODIUM libsodium-1.0.13
+  version: &VERSION 1.0.13-preview-01
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - debian-stretch
+#     - alpine-3.6
+      - pack:
+          requires:
+            - debian-stretch
+#           - alpine-3.6
+
+common_steps:
+  download: &DOWNLOAD
+    name: Download libsodium
+    environment:
+      LIBSODIUM: *LIBSODIUM
+    command: |
+        curl -fsLo libsodium.tar.gz https://download.libsodium.org/libsodium/releases/$LIBSODIUM.tar.gz
+        tar -xzf libsodium.tar.gz
+  build: &BUILD
+    name: Build libsodium
+    working_directory: *LIBSODIUM
+    command: |
+        ./configure
+        make
+        make check
+        make install
+  finalize: &FINALIZE
+    name: Finalizing
+    working_directory: *LIBSODIUM
+    command: |
+        mkdir -p ~/workspace/$CIRCLE_JOB/
+        cp /usr/local/lib/libsodium.so ~/workspace/$CIRCLE_JOB/
+        strip --strip-all ~/workspace/$CIRCLE_JOB/libsodium.so
+
+jobs:
+  pack:
+    docker:
+      - image: microsoft/dotnet:2.0-sdk
+    steps:
+      - run:
+          name: Install Prerequisites
+          command: |
+              apt-get update
+              apt-get install --yes --no-install-recommends python3 ca-certificates curl tar unzip make
+      - attach_workspace:
+          at: ~/workspace/
+      - checkout
+      - restore_cache:
+          keys:
+            - *LIBSODIUM
+      - run:
+          name: Preparing Makefile
+          environment:
+            VERSION: *VERSION
+          command: python3 prepare.py $VERSION
+      - run:
+          name: Make NuGet Package
+          command: make
+      - save_cache:
+          key: *LIBSODIUM
+          paths:
+            - cache
+      - store_artifacts:
+          path: artifacts
+          destination: /
+
+  debian-stretch:
+    docker:
+      - image: debian:stretch
+    steps:
+      - run:
+          name: Install Prerequisites
+          command: |
+              apt-get update
+              apt-get install --yes --no-install-recommends build-essential ca-certificates curl tar
+      - run: *DOWNLOAD
+      - run: *BUILD
+      - run: *FINALIZE
+      - persist_to_workspace:
+          root: ~/workspace/
+          paths:
+            - debian-stretch
+
+  alpine-3.6:
+    docker:
+      - image: alpine:3.6
+    steps:
+      - run:
+          name: Install Prerequisites
+          command: |
+              apk update
+              apk add alpine-sdk ca-certificates curl tar
+      - run: *DOWNLOAD
+      - run: *BUILD
+      - run: *FINALIZE
+      - persist_to_workspace:
+          root: ~/workspace/
+          paths:
+            - alpine-3.6
