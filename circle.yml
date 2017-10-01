@@ -1,8 +1,8 @@
 version: 2
 
 settings:
-  libsodium: &LIBSODIUM libsodium-1.0.14
-  version: &VERSION 1.0.14-preview-01
+  libsodium: &LIBSODIUM libsodium-1.0.15
+  version: &VERSION 1.0.15
 
 workflows:
   version: 2
