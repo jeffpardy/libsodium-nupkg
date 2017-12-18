@@ -10,10 +10,12 @@ workflows:
     jobs:
       - debian-stretch
 #     - alpine-3.6
+      - macos-xcode-9.2
       - pack:
           requires:
             - debian-stretch
 #           - alpine-3.6
+            - macos-xcode-9.2
 
 common_steps:
   download: &DOWNLOAD
@@ -27,7 +29,7 @@ common_steps:
     name: Build libsodium
     working_directory: *LIBSODIUM
     command: |
-        ./configure --prefix=/tmp/libsodium-build
+        ./configure --disable-debug --prefix=/tmp/libsodium-build
         make
         make check
         make install
@@ -38,6 +40,12 @@ common_steps:
         mkdir -p ~/workspace/$CIRCLE_JOB/
         cp /tmp/libsodium-build/lib/libsodium.so ~/workspace/$CIRCLE_JOB/
         strip --strip-all ~/workspace/$CIRCLE_JOB/libsodium.so
+  finalize-dylib: &FINALIZE-DYLIB
+    name: Finalizing
+    working_directory: *LIBSODIUM
+    command: |
+        mkdir -p ~/workspace/$CIRCLE_JOB/
+        cp /tmp/libsodium-build/lib/libsodium.dylib ~/workspace/$CIRCLE_JOB/
 
 jobs:
   pack:
@@ -104,3 +112,15 @@ jobs:
           root: ~/workspace/
           paths:
             - alpine-3.6
+
+  macos-xcode-9.2:
+    macos:
+      xcode: "9.2.0"
+    steps:
+      - run: *DOWNLOAD
+      - run: *BUILD
+      - run: *FINALIZE-DYLIB
+      - persist_to_workspace:
+          root: ~/workspace/
+          paths:
+            - macos-xcode-9.2

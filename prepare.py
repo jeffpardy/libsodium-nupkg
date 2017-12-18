@@ -15,9 +15,9 @@ WINDOWS = [
 
 MACOS = [
   # --------------------- ----------------- #
-  # Runtime ID            Codename          #
+  # Runtime ID            Circle Stage      #
   # --------------------- ----------------- #
-  ( 'osx-x64',            'sierra'          ),
+  ( 'osx-x64',            'macos-xcode-9.2' ),
   # --------------------- ----------------- #
 ]
 
@@ -79,27 +79,17 @@ class WindowsItem:
 
 class MacOSItem:
 
-  def __init__(self, version, rid, codename):
-    self.url = 'https://bintray.com/homebrew/bottles/download_file?file_path=libsodium-{0}.{1}.bottle.tar.gz'.format(version.libsodium_version, codename)
+  def __init__(self, version, rid, circle_stage):
+    self.url = 'https://download.libsodium.org/libsodium/releases/libsodium-{0}.tar.gz'.format(version.libsodium_version)
     self.cachefile = os.path.join(CACHEDIR, re.sub(r'[^A-Za-z0-9.]', '-', self.url))
     self.packfile = os.path.join(version.builddir, 'runtimes', rid, 'native', LIBRARY + '.dylib')
-    self.itemfile = 'libsodium/{0}/lib/libsodium.dylib'.format(version.libsodium_version)
-    self.tempdir = os.path.join(version.tempdir, rid)
-    self.tempfile = os.path.join(self.tempdir, os.path.normpath(self.itemfile))
+    self.inputfile = os.path.join('~', 'workspace', circle_stage, 'libsodium.dylib')
 
   def make(self, f):
     f.write('\n')
-    f.write('{0}: {1}\n'.format(self.packfile, self.tempfile))
+    f.write('{0}: {1}\n'.format(self.packfile, self.inputfile))
     f.write('\t@mkdir -p $(dir $@)\n')
     f.write('\tcp -f $< $@\n')
-    f.write('\n')
-    f.write('{0}: {1}\n'.format(self.tempfile, self.cachefile))
-    f.write('\t@mkdir -p $(dir $@)\n')
-    f.write('\tcd {0} && tar xzmf {1} \'{2}\'\n'.format(
-      self.tempdir,
-      os.path.relpath(self.cachefile, self.tempdir),
-      os.path.dirname(self.itemfile)
-    ))
 
 class LinuxItem:
 
