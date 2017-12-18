@@ -27,16 +27,16 @@ common_steps:
     name: Build libsodium
     working_directory: *LIBSODIUM
     command: |
-        ./configure
+        ./configure --prefix=/tmp/libsodium-build
         make
         make check
         make install
-  finalize: &FINALIZE
+  finalize-so: &FINALIZE-SO
     name: Finalizing
     working_directory: *LIBSODIUM
     command: |
         mkdir -p ~/workspace/$CIRCLE_JOB/
-        cp /usr/local/lib/libsodium.so ~/workspace/$CIRCLE_JOB/
+        cp /tmp/libsodium-build/lib/libsodium.so ~/workspace/$CIRCLE_JOB/
         strip --strip-all ~/workspace/$CIRCLE_JOB/libsodium.so
 
 jobs:
@@ -47,8 +47,8 @@ jobs:
       - run:
           name: Install Prerequisites
           command: |
-              apt-get update
-              apt-get install --yes --no-install-recommends python3 ca-certificates curl tar unzip make
+              apt-get -qq update
+              apt-get -qq install --yes --no-install-recommends python3 ca-certificates curl tar unzip make
       - attach_workspace:
           at: ~/workspace/
       - checkout
@@ -78,11 +78,11 @@ jobs:
       - run:
           name: Install Prerequisites
           command: |
-              apt-get update
-              apt-get install --yes --no-install-recommends build-essential ca-certificates curl tar
+              apt-get -qq update
+              apt-get -qq install --yes --no-install-recommends build-essential ca-certificates curl tar
       - run: *DOWNLOAD
       - run: *BUILD
-      - run: *FINALIZE
+      - run: *FINALIZE-SO
       - persist_to_workspace:
           root: ~/workspace/
           paths:
@@ -99,7 +99,7 @@ jobs:
               apk add alpine-sdk ca-certificates curl tar
       - run: *DOWNLOAD
       - run: *BUILD
-      - run: *FINALIZE
+      - run: *FINALIZE-SO
       - persist_to_workspace:
           root: ~/workspace/
           paths:
