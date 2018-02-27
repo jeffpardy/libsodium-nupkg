@@ -2,19 +2,19 @@ version: 2
 
 settings:
   libsodium: &LIBSODIUM libsodium-1.0.16
-  version: &VERSION 1.0.16
+  version: &VERSION 1.0.16.1
 
 workflows:
   version: 2
   build:
     jobs:
       - debian-stretch
-#     - alpine-3.6
+      - alpine-3.6
       - macos-xcode-9.2
       - pack:
           requires:
             - debian-stretch
-#           - alpine-3.6
+            - alpine-3.6
             - macos-xcode-9.2
 
 common_steps:

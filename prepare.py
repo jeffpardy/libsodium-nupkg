@@ -26,6 +26,7 @@ LINUX = [
   # Runtime ID            Circle Stage      #
   # --------------------- ----------------- #
   ( 'linux-x64',          'debian-stretch'  ),
+  ( 'alpine.3.6-x64',     'alpine-3.6'      ),
   # --------------------- ----------------- #
 ]
 
