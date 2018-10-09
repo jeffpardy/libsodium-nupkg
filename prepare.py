@@ -15,18 +15,18 @@ WINDOWS = [
 
 MACOS = [
   # --------------------- ----------------- #
-  # Runtime ID            Circle Stage      #
+  # Runtime ID            CircleCI Job      #
   # --------------------- ----------------- #
-  ( 'osx-x64',            'macos-xcode-9.2' ),
+  ( 'osx-x64',            'build-macos'     ),
   # --------------------- ----------------- #
 ]
 
 LINUX = [
   # --------------------- ----------------- #
-  # Runtime ID            Circle Stage      #
+  # Runtime ID            CircleCI Job      #
   # --------------------- ----------------- #
-  ( 'linux-x64',          'debian-stretch'  ),
-  ( 'linux-musl-x64',     'alpine-3.7'      ),
+  ( 'linux-x64',          'build-debian9'   ),
+  ( 'linux-musl-x64',     'build-alpine3.7' ),
   # --------------------- ----------------- #
 ]
 

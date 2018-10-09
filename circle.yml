@@ -8,49 +8,156 @@ workflows:
   version: 2
   build:
     jobs:
-      - debian-stretch
-      - alpine-3.7
-      - macos-xcode-9.2
+      - build-alpine3.7
+      - build-debian9
+      - build-macos
       - pack:
           requires:
-            - debian-stretch
-            - alpine-3.7
-            - macos-xcode-9.2
+            - build-alpine3.7
+            - build-debian9
+            - build-macos
+      - test-alpine3.7:
+          requires:
+            - pack
+      - test-centos7:
+          requires:
+            - pack
+      - test-debian8:
+          requires:
+            - pack
+      - test-debian9:
+          requires:
+            - pack
+      - test-fedora27:
+          requires:
+            - pack
+      - test-fedora28:
+          requires:
+            - pack
+      - test-opensuse42.3:
+          requires:
+            - pack
+      - test-ubuntu14.04:
+          requires:
+            - pack
+      - test-ubuntu16.04:
+          requires:
+            - pack
+      - test-ubuntu18.04:
+          requires:
+            - pack
+      - test-macos:
+          requires:
+            - pack
 
 common_steps:
+  environment: &environment
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+    TERM: dumb
   download: &DOWNLOAD
-    name: Download libsodium
-    environment:
-      LIBSODIUM: *LIBSODIUM
-    command: |
-        curl -fsLo libsodium.tar.gz https://download.libsodium.org/libsodium/releases/$LIBSODIUM.tar.gz
-        tar -xzf libsodium.tar.gz
+    run:
+      name: Download libsodium
+      environment:
+        LIBSODIUM: *LIBSODIUM
+      command: |
+          curl -fsLo libsodium.tar.gz https://download.libsodium.org/libsodium/releases/$LIBSODIUM.tar.gz
+          tar -xzf libsodium.tar.gz
   build: &BUILD
-    name: Build libsodium
-    working_directory: *LIBSODIUM
-    command: |
-        ./configure --disable-debug --prefix=/tmp/libsodium-build
-        make
-        make check
-        make install
+    run:
+      name: Build libsodium
+      working_directory: *LIBSODIUM
+      command: |
+          ./configure --disable-debug --prefix=/tmp/libsodium-build
+          make
+          make check
+          make install
   finalize-so: &FINALIZE-SO
-    name: Finalizing
-    working_directory: *LIBSODIUM
-    command: |
-        mkdir -p ~/workspace/$CIRCLE_JOB/
-        cp /tmp/libsodium-build/lib/libsodium.so ~/workspace/$CIRCLE_JOB/
-        strip --strip-all ~/workspace/$CIRCLE_JOB/libsodium.so
+    run:
+      name: Finalizing
+      working_directory: *LIBSODIUM
+      command: |
+          mkdir -p ~/workspace/$CIRCLE_JOB/
+          cp /tmp/libsodium-build/lib/libsodium.so ~/workspace/$CIRCLE_JOB/
+          strip --strip-all ~/workspace/$CIRCLE_JOB/libsodium.so
   finalize-dylib: &FINALIZE-DYLIB
-    name: Finalizing
-    working_directory: *LIBSODIUM
-    command: |
-        mkdir -p ~/workspace/$CIRCLE_JOB/
-        cp /tmp/libsodium-build/lib/libsodium.dylib ~/workspace/$CIRCLE_JOB/
+    run:
+      name: Finalizing
+      working_directory: *LIBSODIUM
+      command: |
+          mkdir -p ~/workspace/$CIRCLE_JOB/
+          cp /tmp/libsodium-build/lib/libsodium.dylib ~/workspace/$CIRCLE_JOB/
+  dotnet-install: &dotnet-install
+    run:
+      name: Install .NET Core SDK
+      command: |
+        if [ ! -f ~/dotnet-install.sh ]; then curl -fsLo ~/dotnet-install.sh 'https://dot.net/v1/dotnet-install.sh'; fi
+        bash ~/dotnet-install.sh --channel 2.1 --version latest --install-dir ~/.dotnet --no-path
+        ~/.dotnet/dotnet --info
+        echo 'export PATH=~/.dotnet:$PATH' >> $BASH_ENV
+  run-tests: &run-tests
+    run:
+      name: Run Tests
+      environment:
+        NUPKGVERSION: *VERSION
+      command: |
+        dotnet new console --name Tests
+        cd Tests
+        dotnet add package libsodium  --version $NUPKGVERSION --source $(cd "../artifacts"; pwd)
+        cp -f ../test.cs Program.cs
+        dotnet run
 
 jobs:
+  build-alpine3.7:
+    docker:
+      - image: alpine:3.7
+    steps:
+      - run:
+          name: Install Prerequisites
+          command: |
+              apk update
+              apk add alpine-sdk ca-certificates curl tar
+      - *DOWNLOAD
+      - *BUILD
+      - *FINALIZE-SO
+      - persist_to_workspace:
+          root: ~/workspace/
+          paths:
+            - build-alpine3.7
+
+  build-debian9:
+    docker:
+      - image: debian:9
+    steps:
+      - run:
+          name: Install Prerequisites
+          command: |
+              apt-get -qq update
+              apt-get -qq install --yes --no-install-recommends build-essential ca-certificates curl tar
+      - *DOWNLOAD
+      - *BUILD
+      - *FINALIZE-SO
+      - persist_to_workspace:
+          root: ~/workspace/
+          paths:
+            - build-debian9
+
+  build-macos:
+    macos:
+      xcode: "9.2.0"
+    steps:
+      - *DOWNLOAD
+      - *BUILD
+      - *FINALIZE-DYLIB
+      - persist_to_workspace:
+          root: ~/workspace/
+          paths:
+            - build-macos
+
   pack:
     docker:
       - image: microsoft/dotnet:2.1-sdk
+    environment: *environment
     steps:
       - run:
           name: Install Prerequisites
@@ -66,8 +173,8 @@ jobs:
       - run:
           name: Preparing Makefile
           environment:
-            VERSION: *VERSION
-          command: python3 prepare.py $VERSION
+            NUPKGVERSION: *VERSION
+          command: python3 prepare.py $NUPKGVERSION
       - run:
           name: Make NuGet Package
           command: make
@@ -75,52 +182,176 @@ jobs:
           key: *LIBSODIUM
           paths:
             - cache
+      - persist_to_workspace:
+          root: artifacts
+          paths:
+            - "*.nupkg"
       - store_artifacts:
           path: artifacts
           destination: /
 
-  debian-stretch:
+  test-alpine3.7:
     docker:
-      - image: debian:stretch
+      - image: microsoft/dotnet:2.1-sdk-alpine3.7
+    environment: *environment
+    steps:
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-centos7:
+    docker:
+      - image: centos:7
+    environment: *environment
     steps:
       - run:
           name: Install Prerequisites
-          command: |
-              apt-get -qq update
-              apt-get -qq install --yes --no-install-recommends build-essential ca-certificates curl tar
-      - run: *DOWNLOAD
-      - run: *BUILD
-      - run: *FINALIZE-SO
-      - persist_to_workspace:
-          root: ~/workspace/
-          paths:
-            - debian-stretch
-
-  alpine-3.7:
+          no_output_timeout: 2m
+          command: yum install -q -y curl ca-certificates libunwind libicu
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+      
+  test-debian8:
     docker:
-      - image: alpine:3.7
+      - image: debian:8
+    environment: *environment
     steps:
       - run:
           name: Install Prerequisites
+          no_output_timeout: 2m
           command: |
-              apk update
-              apk add alpine-sdk ca-certificates curl tar
-      - run: *DOWNLOAD
-      - run: *BUILD
-      - run: *FINALIZE-SO
-      - persist_to_workspace:
-          root: ~/workspace/
-          paths:
-            - alpine-3.7
+            apt-get -qq update
+            apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu52
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
 
-  macos-xcode-9.2:
+  test-debian9:
+    docker:
+      - image: debian:9
+    environment: *environment
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: |
+            apt-get -qq update
+            apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-fedora27:
+    docker:
+      - image: fedora:27
+    environment: *environment
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: dnf install -q -y curl ca-certificates findutils libunwind libicu compat-openssl10
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-fedora28:
+    docker:
+      - image: fedora:28
+    environment: *environment
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: dnf install -q -y curl ca-certificates findutils ncurses libunwind libicu compat-openssl10
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-opensuse42.3:
+    docker:
+      - image: opensuse:42.3
+    environment: *environment
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: zypper -q install -y --no-recommends curl ca-certificates tar ncurses-utils libunwind libicu
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-ubuntu14.04:
+    docker:
+      - image: ubuntu:14.04
+    environment: *environment
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: |
+            apt-get -qq update
+            apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu52
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-ubuntu16.04:
+    docker:
+      - image: ubuntu:16.04
+    environment: *environment
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: |
+            apt-get -qq update
+            apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu55 libcurl3
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-ubuntu18.04:
+    docker:
+      - image: ubuntu:18.04
+    environment: *environment
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: |
+            apt-get -qq update
+            apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu60 libssl1.0.0
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
+
+  test-macos:
     macos:
       xcode: "9.2.0"
+    environment: *environment
     steps:
-      - run: *DOWNLOAD
-      - run: *BUILD
-      - run: *FINALIZE-DYLIB
-      - persist_to_workspace:
-          root: ~/workspace/
-          paths:
-            - macos-xcode-9.2
+      - *dotnet-install
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *run-tests
