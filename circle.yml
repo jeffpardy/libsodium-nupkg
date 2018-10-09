@@ -50,7 +50,7 @@ common_steps:
 jobs:
   pack:
     docker:
-      - image: microsoft/dotnet:2.0-sdk
+      - image: microsoft/dotnet:2.1-sdk
     steps:
       - run:
           name: Install Prerequisites
