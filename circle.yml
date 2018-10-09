@@ -9,12 +9,12 @@ workflows:
   build:
     jobs:
       - debian-stretch
-      - alpine-3.6
+      - alpine-3.7
       - macos-xcode-9.2
       - pack:
           requires:
             - debian-stretch
-            - alpine-3.6
+            - alpine-3.7
             - macos-xcode-9.2
 
 common_steps:
@@ -96,9 +96,9 @@ jobs:
           paths:
             - debian-stretch
 
-  alpine-3.6:
+  alpine-3.7:
     docker:
-      - image: alpine:3.6
+      - image: alpine:3.7
     steps:
       - run:
           name: Install Prerequisites
@@ -111,7 +111,7 @@ jobs:
       - persist_to_workspace:
           root: ~/workspace/
           paths:
-            - alpine-3.6
+            - alpine-3.7
 
   macos-xcode-9.2:
     macos:
