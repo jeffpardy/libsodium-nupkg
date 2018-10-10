@@ -51,7 +51,7 @@ workflows:
             - pack
 
 common_steps:
-  environment: &environment
+  environment: &ENVIRONMENT
     DOTNET_CLI_TELEMETRY_OPTOUT: 1
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
     TERM: dumb
@@ -87,7 +87,7 @@ common_steps:
       command: |
           mkdir -p ~/workspace/$CIRCLE_JOB/
           cp /tmp/libsodium-build/lib/libsodium.dylib ~/workspace/$CIRCLE_JOB/
-  dotnet-install: &dotnet-install
+  dotnet-install: &DOTNET-INSTALL
     run:
       name: Install .NET Core SDK
       command: |
@@ -95,7 +95,7 @@ common_steps:
         bash ~/dotnet-install.sh --channel 2.1 --version latest --install-dir ~/.dotnet --no-path
         ~/.dotnet/dotnet --info
         echo 'export PATH=~/.dotnet:$PATH' >> $BASH_ENV
-  run-tests: &run-tests
+  run-tests: &RUN-TESTS
     run:
       name: Run Tests
       environment:
@@ -103,7 +103,7 @@ common_steps:
       command: |
         dotnet new console --name Tests
         cd Tests
-        dotnet add package libsodium  --version $NUPKGVERSION --source $(cd "../artifacts"; pwd)
+        dotnet add package libsodium --version $NUPKGVERSION --source $(cd "../artifacts"; pwd)
         cp -f ../test.cs Program.cs
         dotnet run
 
@@ -157,7 +157,7 @@ jobs:
   pack:
     docker:
       - image: microsoft/dotnet:2.1-sdk
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
@@ -193,32 +193,32 @@ jobs:
   test-alpine3.7:
     docker:
       - image: microsoft/dotnet:2.1-sdk-alpine3.7
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-centos7:
     docker:
       - image: centos:7
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
           no_output_timeout: 2m
           command: yum install -q -y curl ca-certificates libunwind libicu
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
       
   test-debian8:
     docker:
       - image: debian:8
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
@@ -226,16 +226,16 @@ jobs:
           command: |
             apt-get -qq update
             apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu52
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-debian9:
     docker:
       - image: debian:9
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
@@ -243,61 +243,61 @@ jobs:
           command: |
             apt-get -qq update
             apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-fedora27:
     docker:
       - image: fedora:27
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
           no_output_timeout: 2m
           command: dnf install -q -y curl ca-certificates findutils libunwind libicu compat-openssl10
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-fedora28:
     docker:
       - image: fedora:28
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
           no_output_timeout: 2m
           command: dnf install -q -y curl ca-certificates findutils ncurses libunwind libicu compat-openssl10
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-opensuse42.3:
     docker:
       - image: opensuse:42.3
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
           no_output_timeout: 2m
           command: zypper -q install -y --no-recommends curl ca-certificates tar ncurses-utils libunwind libicu
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-ubuntu14.04:
     docker:
       - image: ubuntu:14.04
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
@@ -305,16 +305,16 @@ jobs:
           command: |
             apt-get -qq update
             apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu52
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-ubuntu16.04:
     docker:
       - image: ubuntu:16.04
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
@@ -322,16 +322,16 @@ jobs:
           command: |
             apt-get -qq update
             apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu55 libcurl3
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-ubuntu18.04:
     docker:
       - image: ubuntu:18.04
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
       - run:
           name: Install Prerequisites
@@ -339,19 +339,19 @@ jobs:
           command: |
             apt-get -qq update
             apt-get -qq install --yes --no-install-recommends curl ca-certificates apt-transport-https gettext libunwind8 libicu60 libssl1.0.0
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
 
   test-macos:
     macos:
       xcode: "9.2.0"
-    environment: *environment
+    environment: *ENVIRONMENT
     steps:
-      - *dotnet-install
+      - *DOTNET-INSTALL
       - checkout
       - attach_workspace:
           at: artifacts
-      - *run-tests
+      - *RUN-TESTS
