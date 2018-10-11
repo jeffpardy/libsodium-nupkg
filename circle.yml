@@ -9,14 +9,17 @@ workflows:
   build:
     jobs:
       - build-alpine3.7
-      - build-debian9
+      - build-centos6
       - build-macos
       - pack:
           requires:
             - build-alpine3.7
-            - build-debian9
+            - build-centos6
             - build-macos
       - test-alpine3.7:
+          requires:
+            - pack
+      - test-centos6:
           requires:
             - pack
       - test-centos7:
@@ -55,6 +58,11 @@ common_steps:
     DOTNET_CLI_TELEMETRY_OPTOUT: 1
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
     TERM: dumb
+  environment: &ENVIRONMENT-INVARIANT
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+    TERM: dumb
   download: &DOWNLOAD
     run:
       name: Download libsodium
@@ -68,6 +76,7 @@ common_steps:
       name: Build libsodium
       working_directory: *LIBSODIUM
       command: |
+          gcc --version
           ./configure --disable-debug --prefix=/tmp/libsodium-build
           make
           make check
@@ -124,6 +133,25 @@ jobs:
           root: ~/workspace/
           paths:
             - build-alpine3.7
+
+  build-centos6:
+    docker:
+      - image: centos:6
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: |
+            yum install -q -y centos-release-scl ca-certificates curl tar
+            yum install -q -y devtoolset-7-gcc*
+            echo 'source scl_source enable devtoolset-7' >> $BASH_ENV
+      - *DOWNLOAD
+      - *BUILD
+      - *FINALIZE-SO
+      - persist_to_workspace:
+          root: ~/workspace/
+          paths:
+            - build-centos6
 
   build-debian9:
     docker:
@@ -193,13 +221,28 @@ jobs:
   test-alpine3.7:
     docker:
       - image: microsoft/dotnet:2.1-sdk-alpine3.7
-    environment: *ENVIRONMENT
+    environment: *ENVIRONMENT-INVARIANT
     steps:
       - checkout
       - attach_workspace:
           at: artifacts
       - *RUN-TESTS
 
+  test-centos6:
+    docker:
+      - image: centos:6
+    environment: *ENVIRONMENT-INVARIANT
+    steps:
+      - run:
+          name: Install Prerequisites
+          no_output_timeout: 2m
+          command: yum install -q -y curl ca-certificates libunwind
+      - *DOTNET-INSTALL
+      - checkout
+      - attach_workspace:
+          at: artifacts
+      - *RUN-TESTS
+      
   test-centos7:
     docker:
       - image: centos:7

@@ -25,7 +25,7 @@ LINUX = [
   # --------------------- ----------------- #
   # Runtime ID            CircleCI Job      #
   # --------------------- ----------------- #
-  ( 'linux-x64',          'build-debian9'   ),
+  ( 'linux-x64',          'build-centos6'   ),
   ( 'linux-musl-x64',     'build-alpine3.7' ),
   # --------------------- ----------------- #
 ]
