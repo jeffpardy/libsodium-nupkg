@@ -3,9 +3,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard1.1</TargetFramework>
-    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
     <NoBuild>true</NoBuild>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
     <PackageOutputPath>$(MSBuildProjectDirectory)</PackageOutputPath>
     <ProjectFileToPack>$(MSBuildProjectFullPath)</ProjectFileToPack>
   </PropertyGroup>
